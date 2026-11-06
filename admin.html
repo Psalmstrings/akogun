@@ -27,16 +27,29 @@
       <div class="login-card">
         <img src="images/akogun-sec-logo.png" alt="AKOGUN SEC Logo" class="login-logo" />
         <h2>Admin Management Portal</h2>
-        <p class="subtitle">Secure administrative access for AKOGUN SEC</p>
+        <p class="subtitle">Connected to Firebase & Cloudinary</p>
 
         <form id="loginForm">
           <div class="login-field">
-            <label for="adminPass">Administrator Passcode / Password</label>
+            <label for="adminEmail">Administrator Email</label>
+            <input
+              type="email"
+              id="adminEmail"
+              required
+              value="admin@akogunsec.com"
+              placeholder="admin@akogunsec.com"
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="login-field">
+            <label for="adminPass">Administrator Password / Passcode</label>
             <input
               type="password"
               id="adminPass"
               required
-              placeholder="Enter admin passcode"
+              value="AkogunSec@2026!"
+              placeholder="Enter password"
               autocomplete="current-password"
             />
           </div>
@@ -46,8 +59,15 @@
           </button>
         </form>
 
-        <div class="login-hint">
-          <strong>Default Initial Access:</strong> <code>akogun2026</code>
+        <div class="login-hint" style="text-align: left; line-height: 1.7; margin-top: 20px;">
+          <div style="font-weight: 700; color: var(--admin-primary); margin-bottom: 4px;">
+            🔑 Official Admin Credentials:
+          </div>
+          <div><strong>Email:</strong> <code>admin@akogunsec.com</code></div>
+          <div><strong>Password:</strong> <code>AkogunSec@2026!</code></div>
+          <div style="font-size: 10px; color: var(--admin-text-muted); margin-top: 4px;">
+            (Firebase Auth active & passkey <code>akogun2026</code> also supported)
+          </div>
         </div>
       </div>
     </div>

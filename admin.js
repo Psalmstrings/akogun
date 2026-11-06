@@ -23,7 +23,9 @@ class AdminApp {
     // Auth elements
     this.loginWrapper = document.getElementById("loginWrapper");
     this.loginForm = document.getElementById("loginForm");
+    this.adminEmailInput = document.getElementById("adminEmail");
     this.adminPassInput = document.getElementById("adminPass");
+    this.loginBtn = document.getElementById("loginBtn");
     this.logoutBtn = document.getElementById("logoutBtn");
 
     // Navigation elements
@@ -102,15 +104,33 @@ class AdminApp {
   initEventListeners() {
     // Login Submit
     if (this.loginForm) {
-      this.loginForm.addEventListener("submit", (e) => {
+      this.loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const email = this.adminEmailInput ? this.adminEmailInput.value.trim() : "admin@akogunsec.com";
         const pass = this.adminPassInput.value.trim();
-        if (this.store.loginAdminLocally(pass)) {
-          this.loginWrapper.style.display = "none";
-          this.showToast("Signed in successfully. Welcome Surv. Babatunde!", "success");
-          this.loadDashboardData();
-        } else {
-          this.showToast("Invalid administrative passcode. Please retry.", "error");
+
+        if (this.loginBtn) {
+          this.loginBtn.disabled = true;
+          this.loginBtn.textContent = "Verifying Credentials...";
+        }
+
+        try {
+          const res = await this.store.loginAdmin(email, pass);
+          if (res.success) {
+            this.loginWrapper.style.display = "none";
+            const methodLabel = res.method === "firebase" ? "Firebase Authenticated" : "Admin Verified";
+            this.showToast(`Signed in successfully (${methodLabel}). Welcome Surv. Babatunde!`, "success");
+            this.loadDashboardData();
+          } else {
+            this.showToast(res.error || "Invalid administrative credentials.", "error");
+          }
+        } catch (err) {
+          this.showToast("Login error: " + err.message, "error");
+        } finally {
+          if (this.loginBtn) {
+            this.loginBtn.disabled = false;
+            this.loginBtn.textContent = "Sign In to Dashboard →";
+          }
         }
       });
     }

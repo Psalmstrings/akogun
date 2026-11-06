@@ -11,17 +11,18 @@
   // Admin can update these live in the Admin Dashboard Settings
   const DEFAULT_CONFIG = {
     firebase: {
-      apiKey: "",
-      authDomain: "",
-      projectId: "",
-      storageBucket: "",
-      messagingSenderId: "",
-      appId: ""
+      apiKey: "AIzaSyBqm5lUUEtSjkeeUt4pbqH0TbUloOmMon0",
+      authDomain: "akogunsec-50335.firebaseapp.com",
+      projectId: "akogunsec-50335",
+      storageBucket: "akogunsec-50335.firebasestorage.app",
+      messagingSenderId: "305487731039",
+      appId: "1:305487731039:web:b3a3f5edea0601debf3eea"
     },
     cloudinary: {
-      cloudName: "akogun-sec",
-      uploadPreset: "akogun_projects",
-      apiKey: ""
+      cloudName: "dd5p5t2rs",
+      uploadPreset: "akogun_preset",
+      apiKey: "826945982469187",
+      apiSecret: "SL7mJQ4hfKzyBz4ssprbQGZLZO0"
     },
     site: {
       companyName: "AKOGUN SEC",
@@ -351,21 +352,43 @@
     // CLOUDINARY DIRECT IMAGE UPLOAD
     // ==========================================
 
+    async generateSha1Signature(toSign) {
+      const msgBuffer = new TextEncoder().encode(toSign);
+      const hashBuffer = await crypto.subtle.digest("SHA-1", msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
     async uploadToCloudinary(file, onProgress) {
-      const cloudName = this.config.cloudinary.cloudName || "akogun-sec";
-      const uploadPreset = this.config.cloudinary.uploadPreset || "akogun_projects";
+      const cloudName = this.config.cloudinary.cloudName || "dd5p5t2rs";
+      const uploadPreset = this.config.cloudinary.uploadPreset || "akogun_preset";
+      const apiKey = this.config.cloudinary.apiKey || "826945982469187";
+      const apiSecret = this.config.cloudinary.apiSecret || "SL7mJQ4hfKzyBz4ssprbQGZLZO0";
 
       if (!file) throw new Error("No file provided for upload.");
 
-      // Check if file is an image
       if (!file.type.startsWith("image/")) {
         throw new Error("File must be a valid image format (JPEG, PNG, WEBP).");
       }
 
+      const timestamp = Math.floor(Date.now() / 1000);
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
-      formData.append("folder", "akogun_sec_projects");
+
+      // Try signed upload if API key & secret are present
+      if (apiKey && apiSecret && window.crypto && window.crypto.subtle) {
+        try {
+          const toSign = `timestamp=${timestamp}${apiSecret}`;
+          const signature = await this.generateSha1Signature(toSign);
+          formData.append("api_key", apiKey);
+          formData.append("timestamp", timestamp.toString());
+          formData.append("signature", signature);
+        } catch (e) {
+          formData.append("upload_preset", uploadPreset);
+        }
+      } else {
+        formData.append("upload_preset", uploadPreset);
+      }
 
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -395,7 +418,6 @@
               reject(new Error("Failed to parse Cloudinary response."));
             }
           } else {
-            // Detailed error handling
             let errMsg = `Upload failed with status ${xhr.status}`;
             try {
               const errRes = JSON.parse(xhr.responseText);
@@ -430,22 +452,47 @@
     // ==========================================
 
     isAdminLoggedIn() {
-      // 1. Firebase Auth check
       if (this.auth && this.auth.currentUser) {
         return true;
       }
-      // 2. Local token check
       const auth = sessionStorage.getItem(this.STORAGE_KEYS.ADMIN_AUTH);
       return auth === "authenticated";
     }
 
-    loginAdminLocally(password) {
-      // Default initial passcode is "akogun2026" or "admin123"
-      if (password === "akogun2026" || password === "admin123" || password === "akogunsec") {
-        sessionStorage.setItem(this.STORAGE_KEYS.ADMIN_AUTH, "authenticated");
-        return true;
+    async loginAdmin(email, password) {
+      const targetEmail = (email || "").trim() || "admin@akogunsec.com";
+      const targetPass = (password || "").trim();
+
+      // 1. Try Firebase Auth
+      if (this.auth) {
+        try {
+          const userCredential = await this.auth.signInWithEmailAndPassword(targetEmail, targetPass);
+          sessionStorage.setItem(this.STORAGE_KEYS.ADMIN_AUTH, "authenticated");
+          sessionStorage.setItem("akogun_admin_email", targetEmail);
+          return { success: true, user: userCredential.user, method: "firebase" };
+        } catch (fbErr) {
+          console.warn("Firebase Auth attempt:", fbErr.code, fbErr.message);
+        }
       }
-      return false;
+
+      // 2. Local fallback check
+      if (
+        (targetEmail === "admin@akogunsec.com" && targetPass === "AkogunSec@2026!") ||
+        targetPass === "AkogunSec@2026!" ||
+        targetPass === "akogun2026" ||
+        targetPass === "admin123" ||
+        targetPass === "akogunsec"
+      ) {
+        sessionStorage.setItem(this.STORAGE_KEYS.ADMIN_AUTH, "authenticated");
+        sessionStorage.setItem("akogun_admin_email", targetEmail);
+        return { success: true, user: { email: targetEmail }, method: "local" };
+      }
+
+      return { success: false, error: "Invalid admin email or password." };
+    }
+
+    loginAdminLocally(password) {
+      return this.loginAdmin("admin@akogunsec.com", password);
     }
 
     logoutAdmin() {
@@ -455,6 +502,7 @@
         } catch (e) {}
       }
       sessionStorage.removeItem(this.STORAGE_KEYS.ADMIN_AUTH);
+      sessionStorage.removeItem("akogun_admin_email");
     }
   }
 
